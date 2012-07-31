@@ -146,6 +146,50 @@ test( 'delay, true, callback', function() {
   })
 });
 
+test( 'testing by_arguments = true', function() {
+  expect( 6 );
+  stop();
+  
+  var start_time,
+    i = 0,
+    arr = [],
+    arr2 = [],
+    fn = function( arg1 ){
+      if(arg1 == 1){
+        arr.push(arg1)
+      }
+      else if(arg1 == 2){
+        arr2.push(arg1)
+      }
+    },
+    throttled = $.throttle( delay, false, fn, true, true);
+  
+  
+  exec_many_times( function(){
+    i++;
+    throttled.call( this, 1 );
+    throttled.call( this, 2 );
+  }, function( callback ){
+    var len = arr.length;
+    var len2 = arr2.length;
+    
+    setTimeout(function(){
+      //console.log( arr, arr.length, len, i );
+      //console.log( arr2, arr2.length, len2, i );
+      equals(arr2.length, arr.length ,'callback should be executed same amount of times');
+      ok( arr.length < i, 'callback should be executed less # of times than throttled-callback' );
+      ok( arr2.length < i, 'callback should be executed less # of times than throttled-callback' );
+      
+      start_time = null;
+      arr = [];
+      arr2 = [];
+      i = 0;
+      
+      callback ? callback() : start();
+      
+    }, delay * 2);
+  })
+});
 
 module( '$.debounce' );
 
@@ -251,6 +295,50 @@ test( 'delay, true, callback', function() {
       
       start_time = null;
       arr = [];
+      i = 0;
+      
+      callback ? callback() : start();
+      
+    }, delay * 2);
+  })
+});
+
+test( 'delay, true, callback, by_arguments = true', function() {
+  expect( 5 );
+  stop();
+  
+  var start_time,
+    i = 0,
+    arr = [],
+    arr2 = [],
+    fn = function( arg1 ){
+      if(arg1 == 1){
+        arr.push(arg1)
+      }
+      else if(arg1 == 2){
+        arr2.push(arg1)
+      }
+    },
+    debounced = $.debounce( delay, true, fn, true);
+  
+  equals( debounced.guid, fn.guid, 'throttled-callback and callback should have the same .guid' );
+  
+  exec_many_times( function(){
+    start_time = start_time || +new Date();
+    i++;
+    debounced.call(this, 1);
+    debounced.call(this, 2);
+  }, function( callback ){
+    var len = arr.length;
+    
+    setTimeout(function(){
+      //console.log( arr[0] - start_time );
+      equals( arr.length, 1, 'callback was executed once with arg 1' );
+      equals( arr2.length, 1, 'callback was executed once with arg 2' );
+      
+      start_time = null;
+      arr = [];
+      arr2 = [];
       i = 0;
       
       callback ? callback() : start();

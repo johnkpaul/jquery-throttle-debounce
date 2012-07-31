@@ -119,50 +119,61 @@
   // 
   //  (Function) A new, throttled, function.
   
-  $.throttle = jq_throttle = function( delay, no_trailing, callback, debounce_mode ) {
+  $.throttle = jq_throttle = function( delay, no_trailing, callback, debounce_mode, by_arguments ) {
     // After wrapper has stopped being called, this timeout ensures that
     // `callback` is executed at the proper times in `throttle` and `end`
     // debounce modes.
-    var timeout_id,
+    var timeout_id_by_arguments = {},
       
-      // Keep track of the last time `callback` was executed.
-      last_exec = 0;
+      last_exec_per_arguments = {};
     
     // `no_trailing` defaults to falsy.
     if ( typeof no_trailing !== 'boolean' ) {
+      by_arguments = debounce_mode;
       debounce_mode = callback;
       callback = no_trailing;
       no_trailing = undefined;
     }
+    
     
     // The `wrapper` function encapsulates all of the throttling / debouncing
     // functionality and when executed will limit the rate at which `callback`
     // is executed.
     function wrapper() {
       var that = this,
-        elapsed = +new Date() - last_exec,
+        elapsed = +new Date() - (last_exec_per_arguments[lastExecKey()] ? last_exec_per_arguments[lastExecKey()] : 0),
         args = arguments;
       
+      function lastExecKey(){
+        if(by_arguments === undefined){
+          return 'last_exec';
+        }
+        else{
+          var key = JSON.stringify(args ? args : 'last_exec');
+          return key;
+        }
+      }
+
       // Execute `callback` and update the `last_exec` timestamp.
       function exec() {
-        last_exec = +new Date();
+        last_exec_per_arguments[lastExecKey()] = +new Date();
         callback.apply( that, args );
       };
       
       // If `debounce_mode` is true (at_begin) this is used to clear the flag
       // to allow future `callback` executions.
       function clear() {
-        timeout_id = undefined;
+        timeout_id_by_arguments[lastExecKey()] = undefined;
       };
       
-      if ( debounce_mode && !timeout_id ) {
+      if ( debounce_mode && !timeout_id_by_arguments[lastExecKey()] ) {
         // Since `wrapper` is being called for the first time and
         // `debounce_mode` is true (at_begin), execute `callback`.
         exec();
       }
       
       // Clear any existing timeout.
-      timeout_id && clearTimeout( timeout_id );
+      timeout_id_by_arguments[lastExecKey()] && clearTimeout( timeout_id_by_arguments[lastExecKey()] );
       
       if ( debounce_mode === undefined && elapsed > delay ) {
         // In throttle mode, if `delay` time has been exceeded, execute
@@ -179,7 +190,8 @@
         // 
         // If `debounce_mode` is false (at end), schedule `callback` to
         // execute after `delay` ms.
-        timeout_id = setTimeout( debounce_mode ? clear : exec, debounce_mode === undefined ? delay - elapsed : delay );
+        var id = setTimeout( debounce_mode ? clear : exec, debounce_mode === undefined ? delay - elapsed : delay );
+        timeout_id_by_arguments[lastExecKey()] = id;
       }
     };
     
@@ -243,10 +255,13 @@
   // 
   //  (Function) A new, debounced, function.
   
-  $.debounce = function( delay, at_begin, callback ) {
-    return callback === undefined
-      ? jq_throttle( delay, at_begin, false )
-      : jq_throttle( delay, callback, at_begin !== false );
+  $.debounce = function( delay, at_begin, callback, by_arguments ) {
+    if(callback === undefined){
+      return  jq_throttle( delay, at_begin, false, undefined,  by_arguments);
+     }
+    else{
+      return jq_throttle( delay, callback, at_begin !== false,  by_arguments);
+    }
   };
   
 })(this);
